@@ -2,9 +2,14 @@ import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 import type { User } from '@/types'
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'fallback-secret-change-in-production-32chars!!'
-)
+function getSecret(): Uint8Array {
+  if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET must be set in production')
+  }
+  return new TextEncoder().encode(
+    process.env.JWT_SECRET || 'dev-only-fallback-secret-not-for-production!!'
+  )
+}
 
 const COOKIE_NAME = 'me_session'
 const COOKIE_OPTS = {
@@ -20,12 +25,12 @@ export async function signToken(payload: { sub: string; role: string }): Promise
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('30d')
-    .sign(SECRET)
+    .sign(getSecret())
 }
 
 export async function verifyToken(token: string): Promise<{ sub: string; role: string } | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET)
+    const { payload } = await jwtVerify(token, getSecret())
     return payload as { sub: string; role: string }
   } catch {
     return null

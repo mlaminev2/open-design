@@ -6,15 +6,15 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('Seeding database…')
 
-  const adminPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'admin1234', 12)
+  const adminPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'azerty', 12)
   await prisma.user.upsert({
-    where: { email: process.env.ADMIN_EMAIL || 'admin@maison-eburne.fr' },
-    update: {},
+    where: { email: process.env.ADMIN_EMAIL || 'lamine@diaby.fr' },
+    update: { password: adminPassword },
     create: {
-      email: process.env.ADMIN_EMAIL || 'admin@maison-eburne.fr',
+      email: process.env.ADMIN_EMAIL || 'lamine@diaby.fr',
       password: adminPassword,
-      firstName: 'Admin',
-      lastName: 'Éburne',
+      firstName: 'Lamine',
+      lastName: 'Diaby',
       role: 'ADMIN',
     },
   })

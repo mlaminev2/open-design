@@ -8,7 +8,9 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   const body = await request.text()
-  const sig = request.headers.get('stripe-signature')!
+  const sig = request.headers.get('stripe-signature')
+
+  if (!sig) return NextResponse.json({ error: 'Signature manquante' }, { status: 400 })
 
   let event: Stripe.Event
   try {
@@ -19,21 +21,36 @@ export async function POST(request: Request) {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session
-    const { orderNumber, userId, items: itemsJson, shippingMethod, firstName, lastName, line1, line2, city, postalCode } = session.metadata ?? {}
+    const { orderNumber, firstName, items: itemsJson } = session.metadata ?? {}
+
+    if (!orderNumber) {
+      console.error('Webhook: orderNumber manquant dans les métadonnées')
+      return NextResponse.json({ received: true })
+    }
 
     try {
-      await prisma.order.update({
-        where: { orderNumber },
-        data: { status: 'PAID' },
-      })
+      // Parse & validate metadata items
+      const metaItems = JSON.parse(itemsJson ?? '[]') as Array<{ vid: string; pid: string; qty: number }>
 
-      const parsedItems = JSON.parse(itemsJson ?? '[]')
-      for (const item of parsedItems) {
-        await prisma.variant.update({
-          where: { id: item.variantId },
-          data: { stock: { decrement: item.quantity } },
+      // Atomic transaction: update order + decrement stock (with floor at 0)
+      await prisma.$transaction(async (tx) => {
+        await tx.order.update({
+          where: { orderNumber },
+          data: { status: 'PAID' },
         })
-      }
+
+        for (const item of metaItems) {
+          await tx.variant.update({
+            where: { id: item.vid },
+            data: { stock: { decrement: item.qty } },
+          })
+          // Prevent negative stock
+          await tx.variant.updateMany({
+            where: { id: item.vid, stock: { lt: 0 } },
+            data: { stock: 0 },
+          })
+        }
+      })
 
       const order = await prisma.order.findUnique({
         where: { orderNumber },
@@ -41,7 +58,7 @@ export async function POST(request: Request) {
       })
 
       if (order && session.customer_email) {
-        const emailOrder = {
+        await sendOrderConfirmation(session.customer_email, {
           id: order.id,
           orderNumber: order.orderNumber,
           status: order.status as 'PAID',
@@ -59,8 +76,7 @@ export async function POST(request: Request) {
             unitPrice: i.unitPrice,
           })),
           firstName: firstName ?? '',
-        }
-        await sendOrderConfirmation(session.customer_email, emailOrder)
+        })
       }
     } catch (err) {
       console.error('Webhook processing error:', err)

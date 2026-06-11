@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
+import AdminSidebar from '@/components/AdminSidebar'
 import type { Product } from '@/types'
 
 export default function AdminProduitsPage() {
@@ -38,52 +39,59 @@ export default function AdminProduitsPage() {
 
   return (
     <div className="admin-layout">
-      <aside className="admin-sidebar">
-        <p className="admin-logo">Maison Éburne</p>
-        <nav className="admin-nav">
-          <Link href="/admin" className="admin-nav-link">Tableau de bord</Link>
-          <Link href="/admin/produits" className="admin-nav-link active">Produits</Link>
-          <Link href="/admin/commandes" className="admin-nav-link">Commandes</Link>
-          <Link href="/" className="admin-nav-link" style={{ marginTop: 'auto', color: 'oklch(96% 0.022 80 / 0.3)' }}>← Retour au site</Link>
-        </nav>
-      </aside>
-
+      <AdminSidebar />
       <div className="admin-content">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-          <h1 className="admin-title" style={{ margin: 0 }}>Produits</h1>
+        <div className="admin-page-header">
+          <h1 className="admin-title">Produits</h1>
+          <Link href="/admin/produits/nouveau" className="btn-primary">+ Nouveau produit</Link>
         </div>
 
         {fetching ? (
           <div className="skeleton" style={{ height: '200px' }} />
+        ) : products.length === 0 ? (
+          <div className="admin-empty">
+            <p>Aucun produit.</p>
+            <Link href="/admin/produits/nouveau" className="btn-primary">Créer le premier produit</Link>
+          </div>
         ) : (
           <table className="data-table">
             <thead>
               <tr>
-                <th>Nom</th><th>Catégorie</th><th>Prix</th><th>Stock total</th><th>Statut</th><th>Actions</th>
+                <th>Nom</th><th>Catégorie</th><th>Prix</th><th>Stock</th><th>Statut</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {products.map((p) => {
                 const totalStock = p.variants.reduce((s, v) => s + v.stock, 0)
+                const lowStock = totalStock > 0 && totalStock <= 5
+                const outOfStock = totalStock === 0
                 return (
                   <tr key={p.id}>
-                    <td><span style={{ fontFamily: 'var(--font-display)', fontSize: '16px' }}>{p.name}</span></td>
-                    <td style={{ color: 'var(--muted)' }}>{p.category}</td>
+                    <td>
+                      <span className="admin-product-name">{p.name}</span>
+                      <span className="admin-product-slug">{p.slug}</span>
+                    </td>
+                    <td className="admin-muted">{p.category}</td>
                     <td>{(p.price / 100).toFixed(0)} €</td>
                     <td>
-                      <span style={{ color: totalStock <= 3 ? 'var(--accent)' : 'var(--fg)', fontWeight: totalStock <= 3 ? 500 : 300 }}>
-                        {totalStock}
+                      <span className={`admin-stock-badge${outOfStock ? ' out' : lowStock ? ' low' : ''}`}>
+                        {outOfStock ? 'Épuisé' : `${totalStock} unités`}
                       </span>
                     </td>
                     <td>
-                      <span style={{ fontSize: '9px', fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: p.isActive ? 'oklch(35% 0.08 160)' : 'var(--muted)', background: p.isActive ? 'oklch(80% 0.08 160 / 0.15)' : 'var(--border)', padding: '4px 10px' }}>
+                      <span className={`admin-status-badge${p.isActive ? ' active' : ''}`}>
                         {p.isActive ? 'Actif' : 'Masqué'}
                       </span>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <Link href={`/produit/${p.slug}`} className="btn-sm">Voir</Link>
-                        <button className={`btn-sm${p.isActive ? ' danger' : ''}`} onClick={() => toggleActive(p.id, p.isActive)}>
+                      <div className="admin-actions">
+                        <Link href={`/admin/produits/${p.id}`} className="btn-sm">Modifier</Link>
+                        <Link href={`/produit/${p.slug}`} className="btn-sm" target="_blank">Voir</Link>
+                        <button
+                          type="button"
+                          className={`btn-sm${p.isActive ? ' danger' : ''}`}
+                          onClick={() => toggleActive(p.id, p.isActive)}
+                        >
                           {p.isActive ? 'Masquer' : 'Activer'}
                         </button>
                       </div>

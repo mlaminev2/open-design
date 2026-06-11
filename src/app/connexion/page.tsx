@@ -18,8 +18,12 @@ export default function ConnexionPage() {
     setError('')
     setLoading(true)
     try {
-      await login(email, password)
-      router.push('/compte')
+      const loggedUser = await login(email, password)
+      if (loggedUser?.role === 'ADMIN') {
+        router.push('/admin')
+      } else {
+        router.push('/compte')
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Identifiants incorrects')
     } finally {

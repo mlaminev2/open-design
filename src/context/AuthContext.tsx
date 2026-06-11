@@ -6,7 +6,7 @@ import type { User } from '@/types'
 interface AuthContextValue {
   user: User | null
   loading: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<User | null>
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
 }
@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { refreshUser() }, [refreshUser])
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string): Promise<User | null> => {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -46,6 +46,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(data.error || 'Erreur de connexion')
     }
     await refreshUser()
+    // refreshUser met à jour le state mais on a besoin de la valeur immédiatement
+    const me = await fetch('/api/auth/me').then((r) => r.json())
+    return me.user ?? null
   }, [refreshUser])
 
   const logout = useCallback(async () => {

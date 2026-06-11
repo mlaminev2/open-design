@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 
-const PROTECTED_ROUTES = ['/compte', '/admin']
+const PROTECTED_ROUTES = ['/compte']
 const AUTH_ROUTES = ['/connexion', '/inscription']
 
 export async function middleware(request: NextRequest) {
@@ -14,11 +14,14 @@ export async function middleware(request: NextRequest) {
 
   const session = token ? await verifyToken(token) : null
 
+  // /compte : redirige vers /connexion si pas connecté
   if (isProtected && !session) {
     return NextResponse.redirect(new URL(`/connexion?redirect=${pathname}`, request.url))
   }
 
-  if (pathname.startsWith('/admin') && session?.role !== 'ADMIN') {
+  // /admin : si connecté mais pas admin → redirige vers /
+  // Si pas connecté → laisse passer (le formulaire inline gère le login)
+  if (pathname.startsWith('/admin') && session && session.role !== 'ADMIN') {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
