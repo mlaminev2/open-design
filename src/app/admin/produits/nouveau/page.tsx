@@ -33,6 +33,8 @@ export default function NouveauProduitPage() {
   const [isActive, setIsActive] = useState(true)
   const [images, setImages] = useState<string[]>([])
   const [variants, setVariants] = useState<VariantRow[]>([{ size: 'M', stock: 0 }])
+  const [metaTitle, setMetaTitle] = useState('')
+  const [metaDescription, setMetaDescription] = useState('')
 
   const handleNameChange = (v: string) => {
     setName(v)
@@ -64,6 +66,8 @@ export default function NouveauProduitPage() {
           price: Math.round(parseFloat(price) * 100),
           description, isLimited, isActive, images,
           variants,
+          metaTitle: metaTitle || null,
+          metaDescription: metaDescription || null,
         }),
       })
       const data = await res.json()
@@ -180,6 +184,23 @@ export default function NouveauProduitPage() {
               ))}
             </div>
             <button type="button" className="btn-sm" onClick={addVariant}>+ Ajouter une taille</button>
+          </div>
+
+          {/* SEO */}
+          <div className="admin-section">
+            <h2 className="admin-subtitle">SEO (optionnel)</h2>
+            <div className="admin-form-grid">
+              <div className="admin-field admin-field-wide">
+                <label className="admin-label" htmlFor="metaTitle">Meta title</label>
+                <input id="metaTitle" className="admin-input" value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} maxLength={120} placeholder="Titre pour les moteurs de recherche" />
+                <span className="admin-hint">{metaTitle.length}/120</span>
+              </div>
+              <div className="admin-field admin-field-wide">
+                <label className="admin-label" htmlFor="metaDesc">Meta description</label>
+                <textarea id="metaDesc" className="admin-textarea" rows={3} value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} maxLength={320} placeholder="Description pour les moteurs de recherche…" />
+                <span className="admin-hint">{metaDescription.length}/320</span>
+              </div>
+            </div>
           </div>
 
           <div className="admin-form-actions">

@@ -5,16 +5,39 @@ import { z } from 'zod'
 
 const schema = z.object({
   stock: z.number().int().min(0),
+  note: z.string().max(200).optional(),
 })
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireAdmin()
-    const { stock } = schema.parse(await request.json())
-    const variant = await prisma.variant.update({
-      where: { id: params.id },
-      data: { stock },
+    const { id } = await params
+    const { stock, note } = schema.parse(await request.json())
+
+    const existing = await prisma.variant.findUnique({ where: { id } })
+    if (!existing) return NextResponse.json({ error: 'Variante introuvable' }, { status: 404 })
+
+    const diff = stock - existing.stock
+    const movementType = diff >= 0 ? 'RESTOCK' : 'ADJUSTMENT'
+
+    const variant = await prisma.$transaction(async (tx) => {
+      const updated = await tx.variant.update({
+        where: { id },
+        data: { stock },
+      })
+      if (diff !== 0) {
+        await tx.stockMovement.create({
+          data: {
+            variantId: id,
+            type: movementType,
+            quantity: diff,
+            note: note ?? `Mise à jour manuelle (admin)`,
+          },
+        })
+      }
+      return updated
     })
+
     return NextResponse.json({ variant })
   } catch (err) {
     if (err instanceof z.ZodError) return NextResponse.json({ error: 'Stock invalide' }, { status: 400 })

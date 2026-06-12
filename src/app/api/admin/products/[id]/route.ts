@@ -11,6 +11,8 @@ const patchSchema = z.object({
   isLimited: z.boolean().optional(),
   isActive: z.boolean().optional(),
   images: z.array(z.string()).optional(),
+  metaTitle: z.string().max(120).optional().nullable(),
+  metaDescription: z.string().max(320).optional().nullable(),
 })
 
 const putSchema = z.object({
@@ -26,6 +28,8 @@ const putSchema = z.object({
     size: z.string().min(1).max(10),
     stock: z.number().int().min(0),
   })).min(1),
+  metaTitle: z.string().max(120).optional().nullable(),
+  metaDescription: z.string().max(320).optional().nullable(),
 })
 
 /** PATCH — modification partielle (ex: toggle isActive) */

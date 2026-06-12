@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useCart } from '@/context/CartContext'
 import { useAuth } from '@/context/AuthContext'
-import { SHIPPING_OPTIONS } from '@/types'
+import type { ShippingOption } from '@/types'
 
 interface Fields {
   firstName: string; lastName: string; email: string
@@ -14,18 +14,41 @@ interface Fields {
 
 const empty: Fields = { firstName: '', lastName: '', email: '', line1: '', city: '', postalCode: '', line2: '' }
 
+interface CouponState {
+  code: string
+  discountAmount: number
+  label: string
+}
+
 export default function CheckoutPage() {
   const router = useRouter()
   const { items, totalPrice, clearCart } = useCart()
   const { user } = useAuth()
   const [fields, setFields] = useState<Fields>({ ...empty, email: user?.email ?? '' })
-  const [shipping, setShipping] = useState<string>(SHIPPING_OPTIONS[0].id)
+  const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([])
+  const [shipping, setShipping] = useState<string>('')
   const [errors, setErrors] = useState<Partial<Fields>>({})
   const [loading, setLoading] = useState(false)
   const [globalError, setGlobalError] = useState('')
+  const [couponCode, setCouponCode] = useState('')
+  const [couponApplied, setCouponApplied] = useState<CouponState | null>(null)
+  const [couponError, setCouponError] = useState('')
+  const [couponLoading, setCouponLoading] = useState(false)
 
-  const shippingOption = SHIPPING_OPTIONS.find((o) => o.id === shipping)!
-  const total = totalPrice + shippingOption.price
+  useEffect(() => {
+    fetch('/api/shipping')
+      .then((r) => r.json())
+      .then((d) => {
+        const opts: ShippingOption[] = d.options ?? []
+        setShippingOptions(opts)
+        if (opts.length > 0) setShipping(opts[0].id)
+      })
+  }, [])
+
+  const shippingOption = shippingOptions.find((o) => o.id === shipping)
+  const shippingPrice = shippingOption?.price ?? 0
+  const subtotalAfterDiscount = totalPrice - (couponApplied?.discountAmount ?? 0)
+  const total = Math.max(0, subtotalAfterDiscount) + shippingPrice
 
   if (items.length === 0) {
     return (
@@ -51,6 +74,31 @@ export default function CheckoutPage() {
     return Object.keys(e).length === 0
   }
 
+  const applyCoupon = async () => {
+    if (!couponCode.trim()) return
+    setCouponError('')
+    setCouponLoading(true)
+    try {
+      const res = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: couponCode.trim().toUpperCase(), orderAmount: totalPrice }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.valid) {
+        setCouponError(data.error ?? 'Code invalide ou expiré.')
+        setCouponApplied(null)
+      } else {
+        const c = data.coupon
+        const label = c.type === 'PERCENT' ? `−${c.value}%` : `−${(data.discountAmount / 100).toFixed(0)} €`
+        setCouponApplied({ code: couponCode.trim().toUpperCase(), discountAmount: data.discountAmount, label })
+        setCouponError('')
+      }
+    } finally {
+      setCouponLoading(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validate()) return
@@ -61,7 +109,7 @@ export default function CheckoutPage() {
       const res = await fetch('/api/checkout/create-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items, shipping, fields }),
+        body: JSON.stringify({ items, shipping, fields, couponCode: couponApplied?.code ?? null }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erreur de paiement')
@@ -117,7 +165,7 @@ export default function CheckoutPage() {
 
         <p className="checkout-section-title" style={{ marginTop: '32px' }}>Mode de livraison</p>
         <div className="shipping-options" role="group" aria-labelledby="shipping-label">
-          {SHIPPING_OPTIONS.map((opt) => (
+          {shippingOptions.map((opt) => (
             <label key={opt.id} className={`shipping-option${shipping === opt.id ? ' selected' : ''}`}>
               <input
                 type="radio" name="shipping" value={opt.id}
@@ -125,21 +173,43 @@ export default function CheckoutPage() {
                 onChange={() => setShipping(opt.id)}
               />
               <div className="shipping-option-info">
-                <p className="shipping-option-label">{opt.label}</p>
+                <p className="shipping-option-label">{opt.name}</p>
                 <p className="shipping-option-delay">{opt.delay}</p>
               </div>
               <span className="shipping-option-price">
-                {(opt.price as number) === 0 ? 'Offert' : `${(opt.price / 100).toFixed(0)} €`}
+                {opt.price === 0 ? 'Offert' : `${(opt.price / 100).toFixed(0)} €`}
               </span>
             </label>
           ))}
         </div>
 
-        {globalError && (
-          <p style={{ color: 'var(--accent)', fontSize: '12px', marginBottom: '16px' }}>{globalError}</p>
+        <p className="checkout-section-title" style={{ marginTop: '32px' }}>Code promo</p>
+        <div className="coupon-input-row">
+          <input
+            className="form-input coupon-input"
+            value={couponCode}
+            onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); if (couponApplied) setCouponApplied(null) }}
+            placeholder="VOTRECODE"
+            disabled={!!couponApplied}
+          />
+          {couponApplied ? (
+            <button type="button" className="btn-sm" onClick={() => { setCouponApplied(null); setCouponCode('') }}>Retirer</button>
+          ) : (
+            <button type="button" className="btn-secondary" onClick={applyCoupon} disabled={couponLoading || !couponCode.trim()}>
+              {couponLoading ? '…' : 'Appliquer'}
+            </button>
+          )}
+        </div>
+        {couponError && <p className="coupon-error">{couponError}</p>}
+        {couponApplied && (
+          <p className="coupon-success">Code <strong>{couponApplied.code}</strong> appliqué — {couponApplied.label}</p>
         )}
 
-        <button type="submit" className="checkout-pay-btn" disabled={loading}>
+        {globalError && (
+          <p style={{ color: 'var(--accent)', fontSize: '12px', marginBottom: '16px', marginTop: '16px' }}>{globalError}</p>
+        )}
+
+        <button type="submit" className="checkout-pay-btn" disabled={loading || !shippingOption} style={{ marginTop: '32px' }}>
           {loading ? <span className="spinner" /> : `Payer ${(total / 100).toFixed(0)} € →`}
         </button>
 
@@ -172,14 +242,18 @@ export default function CheckoutPage() {
         </ul>
 
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {[
-            ['Sous-total', `${(totalPrice / 100).toFixed(0)} €`],
-            ['Livraison', (shippingOption.price as number) === 0 ? 'Offert' : `${(shippingOption.price / 100).toFixed(0)} €`],
-          ].map(([label, val]) => (
-            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--muted)' }}>
-              <span>{label}</span><span>{val}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--muted)' }}>
+            <span>Sous-total</span><span>{(totalPrice / 100).toFixed(0)} €</span>
+          </div>
+          {couponApplied && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'oklch(55% 0.18 145)' }}>
+              <span>Code {couponApplied.code}</span><span>−{(couponApplied.discountAmount / 100).toFixed(0)} €</span>
             </div>
-          ))}
+          )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--muted)' }}>
+            <span>Livraison</span>
+            <span>{shippingPrice === 0 ? 'Offert' : `${(shippingPrice / 100).toFixed(0)} €`}</span>
+          </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
             <span style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 400 }}>Total</span>
             <span style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 300 }}>{(total / 100).toFixed(0)} €</span>

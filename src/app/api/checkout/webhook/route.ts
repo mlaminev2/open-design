@@ -32,12 +32,20 @@ export async function POST(request: Request) {
       // Parse & validate metadata items
       const metaItems = JSON.parse(itemsJson ?? '[]') as Array<{ vid: string; pid: string; qty: number }>
 
-      // Atomic transaction: update order + decrement stock (with floor at 0)
+      // Atomic transaction: update order + decrement stock + log movements
       await prisma.$transaction(async (tx) => {
-        await tx.order.update({
+        const updatedOrder = await tx.order.update({
           where: { orderNumber },
           data: { status: 'PAID' },
         })
+
+        // Increment coupon usage if applicable
+        if (updatedOrder.couponCode) {
+          await tx.coupon.updateMany({
+            where: { code: updatedOrder.couponCode },
+            data: { usedCount: { increment: 1 } },
+          })
+        }
 
         for (const item of metaItems) {
           await tx.variant.update({
@@ -48,6 +56,15 @@ export async function POST(request: Request) {
           await tx.variant.updateMany({
             where: { id: item.vid, stock: { lt: 0 } },
             data: { stock: 0 },
+          })
+          // Log stock movement
+          await tx.stockMovement.create({
+            data: {
+              variantId: item.vid,
+              type: 'SALE',
+              quantity: -item.qty,
+              note: `Commande ${orderNumber}`,
+            },
           })
         }
       })

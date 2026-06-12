@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { stripe } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
-import { SHIPPING_OPTIONS } from '@/types'
 
 const schema = z.object({
   items: z.array(z.object({
@@ -20,6 +19,7 @@ const schema = z.object({
     city: z.string().min(1).max(100).trim(),
     postalCode: z.string().min(2).max(20).trim(),
   }),
+  couponCode: z.string().max(50).nullable().optional(),
 })
 
 function generateOrderNumber(): string {
@@ -33,9 +33,12 @@ function generateOrderNumber(): string {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { items, shipping, fields } = schema.parse(body)
+    const { items, shipping, fields, couponCode } = schema.parse(body)
 
-    const shippingOption = SHIPPING_OPTIONS.find((o) => o.id === shipping)
+    // Fetch shipping option from DB
+    const shippingOption = await prisma.shippingOption.findFirst({
+      where: { id: shipping, isActive: true },
+    })
     if (!shippingOption) return NextResponse.json({ error: 'Mode de livraison invalide' }, { status: 400 })
 
     // Fetch real prices & stock from DB — never trust client prices
@@ -66,46 +69,83 @@ export async function POST(request: Request) {
     })
 
     const subtotal = lineItems.reduce((s, l) => s + l.variant.product.price * l.quantity, 0)
-    const total = subtotal + shippingOption.price
+
+    // Coupon validation
+    let discountAmount = 0
+    let validatedCoupon: { id: string; type: string; value: number } | null = null
+    if (couponCode) {
+      const coupon = await prisma.coupon.findUnique({ where: { code: couponCode } })
+      if (
+        coupon &&
+        coupon.isActive &&
+        (!coupon.expiresAt || coupon.expiresAt > new Date()) &&
+        (!coupon.maxUses || coupon.usedCount < coupon.maxUses) &&
+        (!coupon.minOrderAmount || subtotal >= coupon.minOrderAmount)
+      ) {
+        validatedCoupon = coupon
+        if (coupon.type === 'PERCENT') {
+          discountAmount = Math.round(subtotal * coupon.value / 100)
+        } else {
+          discountAmount = Math.min(coupon.value, subtotal)
+        }
+      }
+    }
+
+    const total = subtotal - discountAmount + shippingOption.price
     const session = await getSession()
     const orderNumber = generateOrderNumber()
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
-    // Keep metadata compact to stay within Stripe's 500-char limit per value
     const metaItems = lineItems.map((l) => ({
       vid: l.variant.id,
       pid: l.variant.product.id,
       qty: l.quantity,
     }))
 
+    // Build Stripe line items
+    const stripeLineItems = [
+      ...lineItems.map((l) => ({
+        price_data: {
+          currency: 'eur',
+          product_data: { name: `${l.variant.product.name} — Taille ${l.variant.size}` },
+          unit_amount: l.variant.product.price,
+        },
+        quantity: l.quantity,
+      })),
+      ...(shippingOption.price > 0 ? [{
+        price_data: {
+          currency: 'eur',
+          product_data: { name: `Livraison ${shippingOption.name}` },
+          unit_amount: shippingOption.price,
+        },
+        quantity: 1 as const,
+      }] : []),
+    ]
+
+    // Create Stripe on-the-fly coupon if discount applies
+    let stripeDiscounts: { coupon: string }[] | undefined
+    if (validatedCoupon && discountAmount > 0) {
+      const stripeCoupon = await stripe.coupons.create(
+        validatedCoupon.type === 'PERCENT'
+          ? { percent_off: validatedCoupon.value, duration: 'once' }
+          : { amount_off: discountAmount, currency: 'eur', duration: 'once' }
+      )
+      stripeDiscounts = [{ coupon: stripeCoupon.id }]
+    }
+
     const stripeSession = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'payment',
       customer_email: fields.email,
-      line_items: [
-        ...lineItems.map((l) => ({
-          price_data: {
-            currency: 'eur',
-            product_data: { name: `${l.variant.product.name} — Taille ${l.variant.size}` },
-            unit_amount: l.variant.product.price,
-          },
-          quantity: l.quantity,
-        })),
-        ...(shippingOption.price > 0 ? [{
-          price_data: {
-            currency: 'eur',
-            product_data: { name: `Livraison ${shippingOption.label}` },
-            unit_amount: shippingOption.price,
-          },
-          quantity: 1 as const,
-        }] : []),
-      ],
+      line_items: stripeLineItems,
+      ...(stripeDiscounts ? { discounts: stripeDiscounts } : {}),
       metadata: {
         orderNumber,
         userId: session?.sub ?? '',
         shippingMethod: shippingOption.id,
         firstName: fields.firstName.slice(0, 80),
         items: JSON.stringify(metaItems).slice(0, 490),
+        couponCode: couponCode ?? '',
       },
       success_url: `${appUrl}/checkout/success?order=${encodeURIComponent(orderNumber)}`,
       cancel_url: `${appUrl}/checkout`,
@@ -118,8 +158,10 @@ export async function POST(request: Request) {
         status: 'PENDING',
         subtotal,
         shippingCost: shippingOption.price,
+        discount: discountAmount,
+        couponCode: validatedCoupon ? couponCode : undefined,
         total,
-        shippingMethod: shippingOption.label,
+        shippingMethod: shippingOption.name,
         guestEmail: !session ? fields.email : undefined,
         guestFirstName: !session ? fields.firstName : undefined,
         guestLastName: !session ? fields.lastName : undefined,

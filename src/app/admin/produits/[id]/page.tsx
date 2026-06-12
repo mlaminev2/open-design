@@ -27,6 +27,9 @@ export default function EditProduitPage({ params }: { params: Promise<{ id: stri
   const [isActive, setIsActive] = useState(true)
   const [images, setImages] = useState<string[]>([])
   const [variants, setVariants] = useState<VariantRow[]>([])
+  const [metaTitle, setMetaTitle] = useState('')
+  const [metaDescription, setMetaDescription] = useState('')
+  const [stockMovements, setStockMovements] = useState<{ id: string; type: string; quantity: number; note: string | null; createdAt: string; variant: { size: string } }[]>([])
 
   useEffect(() => {
     fetch(`/api/admin/products`)
@@ -43,6 +46,17 @@ export default function EditProduitPage({ params }: { params: Promise<{ id: stri
         setIsActive(p.isActive)
         setImages(p.images ?? [])
         setVariants(p.variants.map((v) => ({ id: v.id, size: v.size, stock: v.stock })))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setMetaTitle((p as any).metaTitle ?? '')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setMetaDescription((p as any).metaDescription ?? '')
+        // Load stock movements
+        const variantIds = p.variants.map((v) => v.id)
+        if (variantIds.length > 0) {
+          fetch(`/api/admin/stock-movements?productId=${p.id}`)
+            .then((r) => r.json())
+            .then((d) => setStockMovements(d.movements ?? []))
+        }
       })
       .finally(() => setLoading(false))
   }, [id, router])
@@ -80,6 +94,8 @@ export default function EditProduitPage({ params }: { params: Promise<{ id: stri
           price: Math.round(parseFloat(price) * 100),
           description, isLimited, isActive, images,
           variants: variants.map((v) => ({ id: v.id, size: v.size, stock: v.stock })),
+          metaTitle: metaTitle || null,
+          metaDescription: metaDescription || null,
         }),
       })
       const data = await res.json()
@@ -183,6 +199,23 @@ export default function EditProduitPage({ params }: { params: Promise<{ id: stri
             <button type="button" className="btn-sm" onClick={addVariant}>+ Ajouter une taille</button>
           </div>
 
+          {/* SEO */}
+          <div className="admin-section">
+            <h2 className="admin-subtitle">SEO</h2>
+            <div className="admin-form-grid">
+              <div className="admin-field admin-field-wide">
+                <label className="admin-label" htmlFor="edit-metaTitle">Meta title</label>
+                <input id="edit-metaTitle" className="admin-input" value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} maxLength={120} placeholder="Titre pour les moteurs de recherche" />
+                <span className="admin-hint">{metaTitle.length}/120</span>
+              </div>
+              <div className="admin-field admin-field-wide">
+                <label className="admin-label" htmlFor="edit-metaDesc">Meta description</label>
+                <textarea id="edit-metaDesc" className="admin-textarea" rows={3} value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} maxLength={320} placeholder="Description pour les moteurs de recherche…" />
+                <span className="admin-hint">{metaDescription.length}/320</span>
+              </div>
+            </div>
+          </div>
+
           <div className="admin-form-actions">
             <button type="button" className="btn-secondary" onClick={() => router.push('/admin/produits')}>Annuler</button>
             <button type="submit" className="btn-primary" disabled={saving}>
@@ -190,6 +223,27 @@ export default function EditProduitPage({ params }: { params: Promise<{ id: stri
             </button>
           </div>
         </form>
+
+        {/* Historique mouvements de stock */}
+        {stockMovements.length > 0 && (
+          <div className="admin-section" style={{ marginTop: '48px' }}>
+            <h2 className="admin-subtitle">Historique des mouvements de stock</h2>
+            <table className="data-table">
+              <thead><tr><th>Date</th><th>Taille</th><th>Type</th><th>Qté</th><th>Note</th></tr></thead>
+              <tbody>
+                {stockMovements.map((m) => (
+                  <tr key={m.id}>
+                    <td className="admin-muted">{new Date(m.createdAt).toLocaleDateString('fr-FR')}</td>
+                    <td style={{ fontWeight: 500 }}>{m.variant?.size ?? '—'}</td>
+                    <td><span className={`admin-status-badge${m.type === 'SALE' ? ' out' : ' active'}`}>{m.type === 'SALE' ? 'Vente' : m.type === 'RESTOCK' ? 'Réapprovisionnement' : 'Ajustement'}</span></td>
+                    <td style={{ fontWeight: 500, color: m.quantity >= 0 ? 'oklch(50% 0.14 145)' : 'var(--accent)' }}>{m.quantity >= 0 ? `+${m.quantity}` : m.quantity}</td>
+                    <td className="admin-muted">{m.note ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   )

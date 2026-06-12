@@ -86,6 +86,46 @@ export const SHIPPING_OPTIONS = [
   { id: 'overnight', label: 'Livraison le lendemain', delay: 'Lendemain avant 13h', price: 2500 },
 ] as const
 
+export interface ShippingOption {
+  id: string
+  name: string
+  delay: string
+  price: number
+  isActive: boolean
+  sortOrder: number
+}
+
+export interface Coupon {
+  id: string
+  code: string
+  type: 'PERCENT' | 'FIXED'
+  value: number
+  minOrderAmount: number | null
+  maxUses: number | null
+  usedCount: number
+  isActive: boolean
+  expiresAt: string | null
+}
+
+export interface Review {
+  id: string
+  rating: number
+  title: string | null
+  comment: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  createdAt: string
+  user: { firstName: string | null; lastName: string | null }
+}
+
+export interface ReturnRequest {
+  id: string
+  reason: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'REFUNDED' | 'EXCHANGED'
+  adminNote: string | null
+  createdAt: string
+  order: { orderNumber: string; total: number; createdAt: string }
+}
+
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   PENDING: 'En attente',
   PAID: 'Payée',

@@ -9,6 +9,7 @@ const NAV = [
   { href: '/compte', label: "Vue d'ensemble", exact: true },
   { href: '/compte/favoris', label: 'Mes favoris', exact: false },
   { href: '/compte/commandes', label: 'Mes commandes', exact: false },
+  { href: '/compte/retours', label: 'Retours & Échanges', exact: false },
   { href: '/compte/adresses', label: 'Mes adresses', exact: false },
   { href: '/compte/profil', label: 'Mon profil', exact: false },
 ]

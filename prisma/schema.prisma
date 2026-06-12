@@ -17,11 +17,13 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  orders        Order[]
-  addresses     Address[]
-  cart          CartItem[]
-  newsletter    NewsletterSubscription?
-  wishlistItems WishlistItem[]
+  orders         Order[]
+  addresses      Address[]
+  cart           CartItem[]
+  newsletter     NewsletterSubscription?
+  wishlistItems  WishlistItem[]
+  returnRequests ReturnRequest[]
+  reviews        Review[]
 
   @@map("users")
 }
@@ -50,35 +52,26 @@ model Address {
 }
 
 model Product {
-  id          String    @id @default(cuid())
-  name        String
-  slug        String    @unique
-  description String
-  price       Int
-  category    String
-  isLimited   Boolean   @default(true)
-  isActive    Boolean   @default(true)
-  images      String[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  description     String
+  price           Int
+  category        String
+  isLimited       Boolean  @default(true)
+  isActive        Boolean  @default(true)
+  images          String[]
+  metaTitle       String?
+  metaDescription String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   variants      Variant[]
   orderItems    OrderItem[]
   wishlistItems WishlistItem[]
+  reviews       Review[]
 
   @@map("products")
-}
-
-model WishlistItem {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-
-  @@unique([userId, productId])
-  @@map("wishlist_items")
 }
 
 model Variant {
@@ -88,8 +81,9 @@ model Variant {
   size      String
   stock     Int     @default(0)
 
-  cartItems  CartItem[]
-  orderItems OrderItem[]
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+  stockMovements StockMovement[]
 
   @@unique([productId, size])
   @@map("variants")
@@ -117,8 +111,10 @@ model Order {
   status          OrderStatus @default(PENDING)
   subtotal        Int
   shippingCost    Int
+  discount        Int         @default(0)
   total           Int
   shippingMethod  String
+  couponCode      String?
   guestEmail      String?
   guestFirstName  String?
   guestLastName   String?
@@ -126,7 +122,8 @@ model Order {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
-  items           OrderItem[]
+  items          OrderItem[]
+  returnRequests ReturnRequest[]
 
   @@map("orders")
 }
@@ -156,6 +153,18 @@ model OrderItem {
   @@map("order_items")
 }
 
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@map("wishlist_items")
+}
+
 model NewsletterSubscription {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -164,6 +173,104 @@ model NewsletterSubscription {
   createdAt DateTime @default(now())
 
   @@map("newsletter_subscriptions")
+}
+
+model Coupon {
+  id             String     @id @default(cuid())
+  code           String     @unique
+  type           CouponType @default(PERCENT)
+  value          Int
+  minOrderAmount Int?
+  maxUses        Int?
+  usedCount      Int        @default(0)
+  isActive       Boolean    @default(true)
+  expiresAt      DateTime?
+  createdAt      DateTime   @default(now())
+
+  @@map("coupons")
+}
+
+enum CouponType {
+  PERCENT
+  FIXED
+}
+
+model ReturnRequest {
+  id        String       @id @default(cuid())
+  orderId   String
+  order     Order        @relation(fields: [orderId], references: [id])
+  userId    String
+  user      User         @relation(fields: [userId], references: [id])
+  reason    String
+  items     Json
+  status    ReturnStatus @default(PENDING)
+  adminNote String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@map("return_requests")
+}
+
+enum ReturnStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REFUNDED
+  EXCHANGED
+}
+
+model Review {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id])
+  productId String
+  product   Product      @relation(fields: [productId], references: [id])
+  orderId   String?
+  rating    Int
+  title     String?
+  comment   String
+  status    ReviewStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+
+  @@unique([userId, productId])
+  @@map("reviews")
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model StockMovement {
+  id        String            @id @default(cuid())
+  variantId String
+  variant   Variant           @relation(fields: [variantId], references: [id])
+  type      StockMovementType
+  quantity  Int
+  note      String?
+  orderId   String?
+  createdAt DateTime          @default(now())
+
+  @@map("stock_movements")
+}
+
+enum StockMovementType {
+  SALE
+  RESTOCK
+  ADJUSTMENT
+  RETURN
+}
+
+model ShippingOption {
+  id        String  @id @default(cuid())
+  name      String
+  delay     String
+  price     Int
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  @@map("shipping_options")
 }
 
 model SiteSettings {

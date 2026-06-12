@@ -13,6 +13,8 @@ const productSchema = z.object({
   isActive: z.boolean().default(true),
   images: z.array(z.string()).default([]),
   variants: z.array(z.object({ size: z.string(), stock: z.number().int().min(0) })),
+  metaTitle: z.string().max(120).optional().nullable(),
+  metaDescription: z.string().max(320).optional().nullable(),
 })
 
 export async function GET() {

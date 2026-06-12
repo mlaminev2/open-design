@@ -9,6 +9,10 @@ const NAV = [
   { href: '/admin/produits', label: 'Produits', exact: false },
   { href: '/admin/commandes', label: 'Commandes', exact: false },
   { href: '/admin/clients', label: 'Clients', exact: false },
+  { href: '/admin/coupons', label: 'Codes promo', exact: false },
+  { href: '/admin/retours', label: 'Retours', exact: false },
+  { href: '/admin/avis', label: 'Avis clients', exact: false },
+  { href: '/admin/livraison', label: 'Livraison', exact: false },
   { href: '/admin/newsletter', label: 'Newsletter', exact: false },
 ]
 
