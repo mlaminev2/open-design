@@ -4,9 +4,12 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
+import { useWishlist } from '@/context/WishlistContext'
+import AccountSidebar from '@/components/AccountSidebar'
 
 export default function ComptePage() {
-  const { user, loading, logout } = useAuth()
+  const { user, loading } = useAuth()
+  const { count: wishlistCount } = useWishlist()
   const router = useRouter()
 
   useEffect(() => {
@@ -15,46 +18,23 @@ export default function ComptePage() {
 
   if (loading || !user) return null
 
+  const CARDS = [
+    { label: 'Mes favoris', href: '/compte/favoris', desc: `${wishlistCount} article${wishlistCount > 1 ? 's' : ''} sauvegardé${wishlistCount > 1 ? 's' : ''}` },
+    { label: 'Mes commandes', href: '/compte/commandes', desc: 'Suivre vos achats et leur statut.' },
+    { label: 'Mes adresses', href: '/compte/adresses', desc: 'Gérer vos adresses de livraison.' },
+    { label: 'Mon profil', href: '/compte/profil', desc: 'Modifier vos informations personnelles.' },
+  ]
+
   return (
     <div className="account-page">
-      <aside className="account-sidebar">
-        <p className="account-sidebar-name">{user.firstName} {user.lastName}</p>
-        <p className="account-sidebar-email">{user.email}</p>
-        <nav className="account-nav">
-          <Link href="/compte" className="account-nav-link active">Vue d'ensemble</Link>
-          <Link href="/compte/commandes" className="account-nav-link">Mes commandes</Link>
-          <Link href="/compte/adresses" className="account-nav-link">Mes adresses</Link>
-          <button
-            className="account-nav-link"
-            style={{ background: 'none', border: 'none', padding: '10px 0', textAlign: 'left', color: 'var(--accent)' }}
-            onClick={async () => { await logout(); router.push('/') }}
-          >
-            Déconnexion
-          </button>
-        </nav>
-      </aside>
-
+      <AccountSidebar />
       <div className="account-content">
         <h1 className="account-section-title">Bonjour, {user.firstName}.</h1>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', maxWidth: '560px' }}>
-          {[
-            { label: 'Mes commandes', href: '/compte/commandes', desc: 'Suivre vos achats et leur statut.' },
-            { label: 'Mes adresses', href: '/compte/adresses', desc: 'Gérer vos adresses de livraison.' },
-          ].map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                border: '1px solid var(--border)',
-                padding: '24px',
-                transition: 'border-color 0.2s',
-                display: 'block',
-              }}
-            >
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 400, marginBottom: '8px' }}>
-                {item.label}
-              </p>
-              <p style={{ fontSize: '12px', color: 'var(--muted)' }}>{item.desc}</p>
+        <div className="account-cards-grid">
+          {CARDS.map((item) => (
+            <Link key={item.href} href={item.href} className="account-card">
+              <p className="account-card-title">{item.label}</p>
+              <p className="account-card-desc">{item.desc}</p>
             </Link>
           ))}
         </div>

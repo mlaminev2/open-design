@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
+import AccountSidebar from '@/components/AccountSidebar'
 import { ORDER_STATUS_LABELS, type Order } from '@/types'
 
 export default function CommandesPage() {
@@ -28,33 +29,18 @@ export default function CommandesPage() {
 
   return (
     <div className="account-page">
-      <aside className="account-sidebar">
-        <p className="account-sidebar-name">{user.firstName} {user.lastName}</p>
-        <p className="account-sidebar-email">{user.email}</p>
-        <nav className="account-nav">
-          <Link href="/compte" className="account-nav-link">Vue d'ensemble</Link>
-          <Link href="/compte/commandes" className="account-nav-link active">Mes commandes</Link>
-          <Link href="/compte/adresses" className="account-nav-link">Mes adresses</Link>
-        </nav>
-      </aside>
-
+      <AccountSidebar />
       <div className="account-content">
         <h1 className="account-section-title">Mes commandes</h1>
 
         {fetching ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {[1, 2].map((i) => (
-              <div key={i} className="skeleton" style={{ height: '120px', borderRadius: 0 }} />
-            ))}
+          <div className="account-skeletons">
+            {[1, 2].map((i) => <div key={i} className="skeleton account-skeleton-order" />)}
           </div>
         ) : orders.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '64px 0' }}>
-            <p style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontStyle: 'italic', color: 'var(--muted)', marginBottom: '24px' }}>
-              Aucune commande pour le moment.
-            </p>
-            <Link href="/boutique" className="btn-primary" style={{ display: 'inline-flex', padding: '14px 28px' }}>
-              Découvrir la collection
-            </Link>
+          <div className="account-empty">
+            <p className="account-empty-text">Aucune commande pour le moment.</p>
+            <Link href="/boutique" className="btn-primary account-empty-cta">Découvrir la collection</Link>
           </div>
         ) : (
           orders.map((order) => (
@@ -73,7 +59,7 @@ export default function CommandesPage() {
                   {order.items.map((item) => (
                     <li key={item.id} className="order-item-row">
                       <span>{item.productName} — Taille {item.size} ×{item.quantity}</span>
-                      <span style={{ color: 'var(--muted)' }}>{((item.unitPrice * item.quantity) / 100).toFixed(0)} €</span>
+                      <span className="order-item-price">{((item.unitPrice * item.quantity) / 100).toFixed(0)} €</span>
                     </li>
                   ))}
                 </ul>

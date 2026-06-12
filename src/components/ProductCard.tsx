@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useAuth } from '@/context/AuthContext'
+import { useWishlist } from '@/context/WishlistContext'
 import { useCart } from '@/context/CartContext'
 import { ProductImage } from '@/components/ProductImage'
 import type { Product } from '@/types'
@@ -12,8 +14,11 @@ interface Props {
 }
 
 export default function ProductCard({ product, index = 0 }: Props) {
+  const { user } = useAuth()
+  const { isWishlisted, toggle } = useWishlist()
   const { addItem } = useCart()
   const [added, setAdded] = useState(false)
+  const wishlisted = isWishlisted(product.id)
 
   const totalStock = product.variants.reduce((s, v) => s + v.stock, 0)
   const firstAvailableVariant = product.variants.find((v) => v.stock > 0)
@@ -43,6 +48,16 @@ export default function ProductCard({ product, index = 0 }: Props) {
           <span className="product-card-series" aria-hidden="true">
             {String(index + 1).padStart(2, '0')}
           </span>
+          {user && (
+            <button
+              type="button"
+              className={`product-card-heart${wishlisted ? ' active' : ''}`}
+              onClick={(e) => { e.preventDefault(); toggle(product.id) }}
+              aria-label={wishlisted ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+            >
+              {wishlisted ? '♥' : '♡'}
+            </button>
+          )}
           {product.isLimited && (
             <span className="product-card-limited">Édition Limitée</span>
           )}

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { CartProvider } from '@/context/CartContext'
 import { AuthProvider } from '@/context/AuthContext'
+import { WishlistProvider } from '@/context/WishlistContext'
 import Nav from '@/components/Nav'
 import CartDrawer from '@/components/CartDrawer'
 import CustomCursor from '@/components/CustomCursor'
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fr">
       <body>
         <AuthProvider>
+          <WishlistProvider>
           <CartProvider>
             <CustomCursor />
             <ProgressBar />
@@ -37,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <main>{children}</main>
             <Footer />
           </CartProvider>
+          </WishlistProvider>
         </AuthProvider>
       </body>
     </html>

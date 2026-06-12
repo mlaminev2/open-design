@@ -3,6 +3,8 @@
 import { useState, use } from 'react'
 import Link from 'next/link'
 import { useCart } from '@/context/CartContext'
+import { useAuth } from '@/context/AuthContext'
+import { useWishlist } from '@/context/WishlistContext'
 import SizeSelector from '@/components/SizeSelector'
 import { ProductImage } from '@/components/ProductImage'
 import { useProduct } from '@/hooks/useProducts'
@@ -11,6 +13,8 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
   const { slug } = use(params)
   const { product, loading, notFound } = useProduct(slug)
   const { addItem } = useCart()
+  const { user } = useAuth()
+  const { isWishlisted, toggle } = useWishlist()
   const [selectedSize, setSelectedSize] = useState<string | null>(null)
   const [added, setAdded] = useState(false)
   const [error, setError] = useState('')
@@ -37,6 +41,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
 
   const selectedVariant = product.variants.find((v) => v.size === selectedSize)
   const totalStock = product.variants.reduce((s, v) => s + v.stock, 0)
+  const wishlisted = isWishlisted(product.id)
 
   const handleAdd = () => {
     if (!selectedVariant) { setError('Veuillez sélectionner une taille.'); return }
@@ -64,7 +69,7 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
           <div className="product-gallery-thumbs">
             {product.images.map((url, i) => (
               <div key={url} className="product-gallery-thumb">
-                <img src={url} alt={`${product.name} ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={url} alt={`${product.name} ${i + 1}`} className="product-gallery-thumb-img" />
               </div>
             ))}
           </div>
@@ -91,23 +96,37 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
           </div>
         )}
 
-        <div style={{ marginBottom: '32px' }}>
-          <SizeSelector
-            variants={product.variants}
-            selected={selectedSize}
-            onChange={(s) => { setSelectedSize(s); setError('') }}
-          />
-          {error && <p className="product-size-error">{error}</p>}
-        </div>
+        <div className="product-actions-row">
+          <div className="product-size-wrap">
+            <SizeSelector
+              variants={product.variants}
+              selected={selectedSize}
+              onChange={(s) => { setSelectedSize(s); setError('') }}
+            />
+            {error && <p className="product-size-error">{error}</p>}
+          </div>
 
-        <button
-          type="button"
-          className={`product-add-btn${added ? ' added' : ''}`}
-          onClick={handleAdd}
-          disabled={totalStock === 0}
-        >
-          {totalStock === 0 ? 'Épuisé' : added ? '✓ Ajouté au panier' : 'Ajouter au panier →'}
-        </button>
+          <button
+            type="button"
+            className={`product-add-btn${added ? ' added' : ''}`}
+            onClick={handleAdd}
+            disabled={totalStock === 0}
+          >
+            {totalStock === 0 ? 'Épuisé' : added ? '✓ Ajouté au panier' : 'Ajouter au panier →'}
+          </button>
+
+          {user && (
+            <button
+              type="button"
+              className={`product-wishlist-btn${wishlisted ? ' active' : ''}`}
+              onClick={() => toggle(product.id)}
+              aria-label={wishlisted ? 'Retirer des favoris' : 'Sauvegarder dans les favoris'}
+            >
+              <span className="product-wishlist-icon">{wishlisted ? '♥' : '♡'}</span>
+              {wishlisted ? 'Sauvegardé' : 'Sauvegarder'}
+            </button>
+          )}
+        </div>
 
         <p className="product-description">{product.description}</p>
 
