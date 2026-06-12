@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import AdminSidebar from '@/components/AdminSidebar'
+import ImageUpload from '@/components/ImageUpload'
 
 const CATEGORIES = ['Manteaux', 'Hauts', 'Bas', 'Accessoires']
 const SIZE_PRESETS = {
@@ -30,6 +31,7 @@ export default function NouveauProduitPage() {
   const [description, setDescription] = useState('')
   const [isLimited, setIsLimited] = useState(true)
   const [isActive, setIsActive] = useState(true)
+  const [images, setImages] = useState<string[]>([])
   const [variants, setVariants] = useState<VariantRow[]>([{ size: 'M', stock: 0 }])
 
   const handleNameChange = (v: string) => {
@@ -60,7 +62,7 @@ export default function NouveauProduitPage() {
         body: JSON.stringify({
           name, slug, category,
           price: Math.round(parseFloat(price) * 100),
-          description, isLimited, isActive, images: [],
+          description, isLimited, isActive, images,
           variants,
         }),
       })
@@ -121,6 +123,12 @@ export default function NouveauProduitPage() {
             <div className="admin-field admin-field-wide">
               <label className="admin-label">Description *</label>
               <textarea className="admin-textarea" rows={5} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description du produit…" required />
+            </div>
+
+            {/* Photos */}
+            <div className="admin-field admin-field-wide">
+              <label className="admin-label">Photos du produit</label>
+              <ImageUpload images={images} onChange={setImages} />
             </div>
 
             {/* Options */}

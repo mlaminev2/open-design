@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const isDev = process.env.NODE_ENV === 'development'
+
 const securityHeaders = [
   {
     key: 'X-DNS-Prefetch-Control',
@@ -25,11 +27,11 @@ const securityHeaders = [
     value: 'camera=(), microphone=(), geolocation=()',
   },
   {
-    // CSP: allow Google Fonts, Stripe, and our own domain
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://js.stripe.com",
+      // En dev : 'unsafe-eval' est requis par Next.js (React Fast Refresh)
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://js.stripe.com`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https://*.unsplash.com https://*.cloudinary.com",

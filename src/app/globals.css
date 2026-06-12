@@ -42,9 +42,12 @@ body {
 }
 
 img, video { display: block; max-width: 100%; }
-a { color: inherit; text-decoration: none; }
+a { color: inherit; text-decoration: none; cursor: none; }
 button { cursor: none; font-family: var(--font-body); }
-@media (hover: none) { button { cursor: pointer; } }
+input, select, textarea, label { cursor: none; }
+@media (hover: none) {
+  button, a, input, select, textarea, label { cursor: auto; }
+}
 
 /* ─── Keyframes ──────────────────────────────────────────────────────── */
 @keyframes fadeUp {
@@ -91,28 +94,28 @@ button { cursor: none; font-family: var(--font-body); }
 .cursor-ring {
   position: fixed;
   pointer-events: none;
-  z-index: 9999;
   border-radius: 50%;
   transform: translate(-50%, -50%);
-  transition: opacity 0.3s var(--ease);
+  z-index: 99999;
+  left: -100px;
+  top: -100px;
 }
 .cursor-dot {
-  width: 6px;
-  height: 6px;
-  background: var(--accent);
-  z-index: 9999;
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  box-shadow: 0 0 0 1.5px rgba(20,16,10,0.55), 0 1px 6px rgba(0,0,0,0.18);
 }
 .cursor-ring {
-  width: 34px;
-  height: 34px;
-  border: 1px solid oklch(18% 0.025 45 / 0.35);
-  z-index: 9998;
-  transition: width 0.4s var(--ease), height 0.4s var(--ease), border-color 0.4s var(--ease);
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255,255,255,0.75);
+  box-shadow: 0 0 0 1px rgba(20,16,10,0.25);
+  transition: width 0.4s var(--ease), height 0.4s var(--ease);
 }
 .cursor-ring.expanded {
-  width: 58px;
-  height: 58px;
-  border-color: oklch(18% 0.025 45 / 0.15);
+  width: 60px;
+  height: 60px;
 }
 @media (hover: none) {
   .cursor-dot, .cursor-ring { display: none; }
@@ -1637,6 +1640,98 @@ button { cursor: none; font-family: var(--font-body); }
 .admin-variant-row { display: flex; align-items: center; gap: 8px; }
 .admin-variant-size { width: 100px; flex-shrink: 0; }
 .admin-variant-stock { width: 100px; flex-shrink: 0; }
+
+/* Admin — image upload */
+.image-upload { display: flex; flex-direction: column; gap: 16px; }
+.image-drop-zone {
+  border: 1px dashed var(--border);
+  padding: 36px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.image-drop-zone:hover, .image-drop-zone.drag-over {
+  border-color: var(--fg);
+  background: var(--bg);
+}
+.image-drop-zone.uploading { opacity: 0.6; cursor: wait; pointer-events: none; }
+.image-drop-icon { font-size: 24px; color: var(--muted); }
+.image-drop-label { font-size: 12px; color: var(--muted); }
+.image-drop-hint { font-size: 10px; color: var(--border); letter-spacing: 0.06em; }
+.image-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+.image-preview-item {
+  position: relative;
+  aspect-ratio: 3/4;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.image-preview-item.primary { border-color: var(--fg); }
+.image-preview-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.image-primary-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: var(--fg);
+  color: var(--cream);
+  padding: 3px 7px;
+}
+.image-preview-actions {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px;
+  background: rgba(20, 16, 10, 0.7);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.image-preview-item:hover .image-preview-actions { opacity: 1; }
+.image-action-btn {
+  font-family: var(--font-body);
+  font-size: 11px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.image-action-btn:hover { background: rgba(255,255,255,0.15); }
+.image-action-btn.delete:hover { background: oklch(55% 0.15 25 / 0.6); border-color: transparent; }
+
+/* Product gallery thumbnails */
+.product-gallery-thumbs {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.product-gallery-thumb {
+  width: 72px;
+  height: 96px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.product-gallery-thumb:hover { border-color: var(--fg); }
 
 /* ─── Content pages (about, faq, etc.) ──────────────────────────────── */
 .content-page {

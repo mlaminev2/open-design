@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useCart } from '@/context/CartContext'
-import { ProductPlaceholder } from '@/components/ProductPlaceholder'
+import { ProductImage } from '@/components/ProductImage'
 import type { Product } from '@/types'
 
 interface Props {
@@ -38,7 +38,7 @@ export default function ProductCard({ product, index = 0 }: Props) {
       <Link href={`/produit/${product.slug}`}>
         <div className="product-card-img">
           <div className="product-card-img-inner">
-            <ProductPlaceholder slug={product.slug} />
+            <ProductImage images={product.images} slug={product.slug} alt={product.name} />
           </div>
           <span className="product-card-series" aria-hidden="true">
             {String(index + 1).padStart(2, '0')}

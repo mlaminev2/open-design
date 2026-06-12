@@ -20,8 +20,22 @@ export default function CustomCursor() {
       dot.style.top = `${e.clientY}px`
     }
 
-    const onEnter = () => ringEl.classList.add('expanded')
-    const onLeave = () => ringEl.classList.remove('expanded')
+    const onLeaveWindow = () => {
+      dot.style.left = '-100px'
+      ringEl.style.left = '-100px'
+      pos.current = { x: -100, y: -100 }
+      ring.current = { x: -100, y: -100 }
+    }
+
+    const onExpand = () => ringEl.classList.add('expanded')
+    const onShrink = () => ringEl.classList.remove('expanded')
+
+    const attachHovers = () => {
+      document.querySelectorAll<HTMLElement>('a,button,[role="button"],input,select,textarea,label,.product-card').forEach((el) => {
+        el.addEventListener('mouseenter', onExpand)
+        el.addEventListener('mouseleave', onShrink)
+      })
+    }
 
     const tick = () => {
       ring.current.x += (pos.current.x - ring.current.x) * 0.12
@@ -31,26 +45,18 @@ export default function CustomCursor() {
       rafId.current = requestAnimationFrame(tick)
     }
 
-    const interactives = 'a,button,[role="button"],input,select,textarea,label,.product-card'
-
     document.addEventListener('mousemove', onMove, { passive: true })
-    document.querySelectorAll<HTMLElement>(interactives).forEach((el) => {
-      el.addEventListener('mouseenter', onEnter)
-      el.addEventListener('mouseleave', onLeave)
-    })
+    document.addEventListener('mouseleave', onLeaveWindow)
 
-    const observer = new MutationObserver(() => {
-      document.querySelectorAll<HTMLElement>(interactives).forEach((el) => {
-        el.addEventListener('mouseenter', onEnter)
-        el.addEventListener('mouseleave', onLeave)
-      })
-    })
+    attachHovers()
+    const observer = new MutationObserver(attachHovers)
     observer.observe(document.body, { childList: true, subtree: true })
 
     rafId.current = requestAnimationFrame(tick)
 
     return () => {
       document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseleave', onLeaveWindow)
       cancelAnimationFrame(rafId.current)
       observer.disconnect()
     }

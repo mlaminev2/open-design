@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import AdminSidebar from '@/components/AdminSidebar'
+import ImageUpload from '@/components/ImageUpload'
 import type { Product } from '@/types'
 
 const CATEGORIES = ['Manteaux', 'Hauts', 'Bas', 'Accessoires']
@@ -24,6 +25,7 @@ export default function EditProduitPage({ params }: { params: Promise<{ id: stri
   const [description, setDescription] = useState('')
   const [isLimited, setIsLimited] = useState(true)
   const [isActive, setIsActive] = useState(true)
+  const [images, setImages] = useState<string[]>([])
   const [variants, setVariants] = useState<VariantRow[]>([])
 
   useEffect(() => {
@@ -39,6 +41,7 @@ export default function EditProduitPage({ params }: { params: Promise<{ id: stri
         setDescription(p.description)
         setIsLimited(p.isLimited)
         setIsActive(p.isActive)
+        setImages(p.images ?? [])
         setVariants(p.variants.map((v) => ({ id: v.id, size: v.size, stock: v.stock })))
       })
       .finally(() => setLoading(false))
@@ -75,7 +78,7 @@ export default function EditProduitPage({ params }: { params: Promise<{ id: stri
         body: JSON.stringify({
           name, category,
           price: Math.round(parseFloat(price) * 100),
-          description, isLimited, isActive, images: product?.images ?? [],
+          description, isLimited, isActive, images,
           variants: variants.map((v) => ({ id: v.id, size: v.size, stock: v.stock })),
         }),
       })
@@ -125,6 +128,12 @@ export default function EditProduitPage({ params }: { params: Promise<{ id: stri
             <div className="admin-field admin-field-wide">
               <label className="admin-label">Description *</label>
               <textarea className="admin-textarea" rows={5} value={description} onChange={(e) => setDescription(e.target.value)} required />
+            </div>
+
+            {/* Photos */}
+            <div className="admin-field admin-field-wide">
+              <label className="admin-label">Photos du produit</label>
+              <ImageUpload images={images} onChange={setImages} />
             </div>
 
             <div className="admin-field admin-field-wide">

@@ -7,6 +7,8 @@ const NAV = [
   { href: '/admin', label: 'Tableau de bord', exact: true },
   { href: '/admin/produits', label: 'Produits', exact: false },
   { href: '/admin/commandes', label: 'Commandes', exact: false },
+  { href: '/admin/clients', label: 'Clients', exact: false },
+  { href: '/admin/newsletter', label: 'Newsletter', exact: false },
 ]
 
 export default function AdminSidebar() {

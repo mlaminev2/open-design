@@ -4,7 +4,7 @@ import { useState, use } from 'react'
 import Link from 'next/link'
 import { useCart } from '@/context/CartContext'
 import SizeSelector from '@/components/SizeSelector'
-import { ProductPlaceholder } from '@/components/ProductPlaceholder'
+import { ProductImage } from '@/components/ProductImage'
 import { useProduct } from '@/hooks/useProducts'
 
 export default function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -58,8 +58,17 @@ export default function ProductPage({ params }: { params: Promise<{ slug: string
     <div className="product-page">
       <div className="product-gallery">
         <div className="product-gallery-main">
-          <ProductPlaceholder slug={product.slug} />
+          <ProductImage images={product.images} slug={product.slug} alt={product.name} priority />
         </div>
+        {product.images && product.images.length > 1 && (
+          <div className="product-gallery-thumbs">
+            {product.images.map((url, i) => (
+              <div key={url} className="product-gallery-thumb">
+                <img src={url} alt={`${product.name} ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="product-info">
