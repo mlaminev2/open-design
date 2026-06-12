@@ -151,3 +151,11 @@ model NewsletterSubscription {
 
   @@map("newsletter_subscriptions")
 }
+
+model SiteSettings {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("site_settings")
+}

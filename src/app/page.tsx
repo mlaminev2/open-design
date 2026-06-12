@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Marquee from '@/components/Marquee'
 import ProductCard from '@/components/ProductCard'
-import { ProductPlaceholder } from '@/components/ProductPlaceholder'
 import { useProducts } from '@/hooks/useProducts'
+import type { HomepageSettings } from '@/lib/homepageSettings'
+import type { Product } from '@/types'
 
 const LOOKBOOK_ITEMS = [
   { gradient: 'linear-gradient(170deg, oklch(20% 0.03 40) 0%, oklch(28% 0.05 50) 100%)', label: 'Look 01' },
@@ -15,15 +16,32 @@ const LOOKBOOK_ITEMS = [
   { gradient: 'linear-gradient(170deg, oklch(16% 0.02 30) 0%, oklch(24% 0.04 40) 100%)', label: 'Look 05' },
 ]
 
+const DEFAULT_SETTINGS: HomepageSettings = {
+  hero: { eyebrow: 'Paris — SS25 · Édition Limitée', titleLine1: "L'Élégance", titleLine2: 'Redéfinie', subtitle: 'Un vêtement qui prend du sens avec le temps.', ctaText: 'Découvrir la collection →', ctaLink: '/boutique' },
+  sections: { showPhilosophy: true, showLookbook: true },
+  collection: { mode: 'auto', productIds: [], maxItems: 4 },
+}
+
 export default function HomePage() {
   const ghostRef = useRef<HTMLDivElement>(null)
   const glowRef = useRef<HTMLDivElement>(null)
   const heroContentRef = useRef<HTMLDivElement>(null)
   const lookbookRef = useRef<HTMLDivElement>(null)
   const { products } = useProducts()
+  const [settings, setSettings] = useState<HomepageSettings>(DEFAULT_SETTINGS)
 
-  // Affiche au max 4 produits dans la section collection
-  const collectionProducts = products.slice(0, 4)
+  useEffect(() => {
+    fetch('/api/homepage').then((r) => r.json()).then((d) => {
+      if (d.settings) setSettings(d.settings)
+    }).catch(() => {})
+  }, [])
+
+  const collectionProducts: Product[] = settings.collection.mode === 'manual' && settings.collection.productIds.length > 0
+    ? settings.collection.productIds
+        .map((id) => products.find((p) => p.id === id))
+        .filter((p): p is Product => Boolean(p))
+        .slice(0, settings.collection.maxItems)
+    : products.slice(0, settings.collection.maxItems)
 
   useEffect(() => {
     const ghost = ghostRef.current
@@ -78,35 +96,31 @@ export default function HomePage() {
     }
   }, [])
 
+  const { hero, sections } = settings
+
   return (
     <>
       {/* ── HERO ─────────────────────────────────────────────────────── */}
-      <section className="hero" id="hero" aria-label="Hero — L'Élégance Redéfinie">
+      <section className="hero" id="hero" aria-label="Hero">
         <div ref={ghostRef} className="hero-ghost" aria-hidden="true">É</div>
         <div ref={glowRef} className="hero-glow" aria-hidden="true" />
 
         <div ref={heroContentRef} className="hero-content">
-          <p className="hero-eyebrow">Paris — SS25 · Édition Limitée</p>
+          <p className="hero-eyebrow">{hero.eyebrow}</p>
 
           <h1>
             <span className="hero-title-wrap">
-              <span className="hero-line l1">
-                <span className="inner">L'Élégance</span>
-              </span>
+              <span className="hero-line l1"><span className="inner">{hero.titleLine1}</span></span>
             </span>
             <span className="hero-title-wrap">
-              <span className="hero-line l2">
-                <span className="inner">Redéfinie</span>
-              </span>
+              <span className="hero-line l2"><span className="inner">{hero.titleLine2}</span></span>
             </span>
           </h1>
 
-          <p className="hero-sub">Un vêtement qui prend du sens avec le temps.</p>
+          <p className="hero-sub">{hero.subtitle}</p>
 
-          <Link href="/boutique">
-            <button type="button" className="hero-cta">
-              Découvrir la collection →
-            </button>
+          <Link href={hero.ctaLink}>
+            <button type="button" className="hero-cta">{hero.ctaText}</button>
           </Link>
         </div>
 
@@ -117,89 +131,67 @@ export default function HomePage() {
       <Marquee />
 
       {/* ── PHILOSOPHY ───────────────────────────────────────────────── */}
-      <section className="philosophy" aria-labelledby="philosophy-heading">
-        <div style={{ maxWidth: 'var(--max)', margin: '0 auto' }}>
-          <div className="philosophy-header js-reveal">
-            <p className="section-label">Notre philosophie</p>
-            <h2 className="section-headline" id="philosophy-heading">
-              Un vêtement qui prend<br />du sens avec le temps.
-            </h2>
+      {sections.showPhilosophy && (
+        <section className="philosophy" aria-labelledby="philosophy-heading">
+          <div style={{ maxWidth: 'var(--max)', margin: '0 auto' }}>
+            <div className="philosophy-header js-reveal">
+              <p className="section-label">Notre philosophie</p>
+              <h2 className="section-headline" id="philosophy-heading">
+                Un vêtement qui prend<br />du sens avec le temps.
+              </h2>
+            </div>
+            <div className="philosophy-grid">
+              {[
+                { num: '04', title: 'Pièces par collection', text: 'Quatre silhouettes, rien de plus. Chaque pièce est pensée comme une déclaration, pas comme un remplissage de catalogue.' },
+                { num: '∞', title: 'Saisons de durabilité', text: 'Des matières choisies pour traverser les années. Laine vierge, cachemire, coton japonais — rien qui ne vieillisse bien n\'entre ici.' },
+                { num: '01', title: 'Maison, une vision', text: 'Né à Paris, pensé comme une maison de couture. La rigueur du tailleur, la liberté de la rue, la permanence du temps.' },
+              ].map((item, i) => (
+                <div key={i} className={`philosophy-item js-reveal${i === 0 ? ' from-left' : ''}`} style={{ transitionDelay: `${i * 0.15}s` }}>
+                  <div className="philosophy-num">{item.num}</div>
+                  <h3 className="philosophy-title">{item.title}</h3>
+                  <p className="philosophy-text">{item.text}</p>
+                </div>
+              ))}
+            </div>
           </div>
+        </section>
+      )}
 
-          <div className="philosophy-grid">
-            {[
-              { num: '04', title: 'Pièces par collection', text: 'Quatre silhouettes, rien de plus. Chaque pièce est pensée comme une déclaration, pas comme un remplissage de catalogue.' },
-              { num: '∞', title: 'Saisons de durabilité', text: 'Des matières choisies pour traverser les années. Laine vierge, cachemire, coton japonais — rien qui ne vieillisse bien n\'entre ici.' },
-              { num: '01', title: 'Maison, une vision', text: 'Né à Paris, pensé comme une maison de couture. La rigueur du tailleur, la liberté de la rue, la permanence du temps.' },
-            ].map((item, i) => (
-              <div key={i} className={`philosophy-item js-reveal${i === 0 ? ' from-left' : ''}`} style={{ transitionDelay: `${i * 0.15}s` }}>
-                <div className="philosophy-num">{item.num}</div>
-                <h3 className="philosophy-title">{item.title}</h3>
-                <p className="philosophy-text">{item.text}</p>
+      {/* ── LOOKBOOK ─────────────────────────────────────────────────── */}
+      {sections.showLookbook && (
+        <section className="lookbook-section" aria-labelledby="lookbook-heading">
+          <div className="lookbook-header">
+            <p className="section-label">SS25</p>
+            <h2 className="section-headline" id="lookbook-heading" style={{ color: 'var(--cream)' }}>Lookbook</h2>
+          </div>
+          <div className="lookbook-strip" ref={lookbookRef} aria-label="Lookbook — défiler horizontalement">
+            {LOOKBOOK_ITEMS.map((item, i) => (
+              <div key={i} className="lookbook-img" aria-label={item.label}>
+                <div className="lookbook-img-placeholder" style={{ background: item.gradient }}>
+                  <span className="lookbook-img-num">{item.label}</span>
+                </div>
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ── LOOKBOOK ─────────────────────────────────────────────────── */}
-      <section className="lookbook-section" aria-labelledby="lookbook-heading">
-        <div className="lookbook-header">
-          <p className="section-label">SS25</p>
-          <h2 className="section-headline" id="lookbook-heading" style={{ color: 'var(--cream)' }}>
-            Lookbook
-          </h2>
-        </div>
-        <div className="lookbook-strip" ref={lookbookRef} aria-label="Lookbook — défiler horizontalement">
-          {LOOKBOOK_ITEMS.map((item, i) => (
-            <div key={i} className="lookbook-img" aria-label={item.label}>
-              <div className="lookbook-img-placeholder" style={{ background: item.gradient }}>
-                <span className="lookbook-img-num">{item.label}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div style={{ padding: '40px var(--px) 0', textAlign: 'right' }}>
-          <Link
-            href="/lookbook"
-            style={{
-              fontFamily: 'var(--font-body)',
-              fontSize: '10px',
-              fontWeight: 500,
-              letterSpacing: '0.22em',
-              textTransform: 'uppercase',
-              color: 'oklch(96% 0.022 80 / 0.45)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'color 0.2s',
-            }}
-          >
-            Voir le lookbook complet →
-          </Link>
-        </div>
-      </section>
+          <div style={{ padding: '40px var(--px) 0', textAlign: 'right' }}>
+            <Link href="/lookbook" style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 500, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'oklch(96% 0.022 80 / 0.45)', display: 'inline-flex', alignItems: 'center', gap: '8px', transition: 'color 0.2s' }}>
+              Voir le lookbook complet →
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* ── COLLECTION ───────────────────────────────────────────────── */}
       <section className="collection-section" aria-labelledby="collection-heading">
         <div style={{ maxWidth: 'var(--max)', margin: '0 auto' }}>
           <div className="collection-header">
-            <h2 className="collection-headline" id="collection-heading">
-              La Collection
-            </h2>
-            <Link href="/boutique" className="collection-link">
-              Toute la boutique →
-            </Link>
+            <h2 className="collection-headline" id="collection-heading">La Collection</h2>
+            <Link href="/boutique" className="collection-link">Toute la boutique →</Link>
           </div>
-
           <div className="products-grid">
             {collectionProducts.length > 0
-              ? collectionProducts.map((product, i) => (
-                  <ProductCard key={product.id} product={product} index={i} />
-                ))
-              : Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="product-card-skeleton" />
-                ))
+              ? collectionProducts.map((product, i) => <ProductCard key={product.id} product={product} index={i} />)
+              : Array.from({ length: settings.collection.maxItems }).map((_, i) => <div key={i} className="product-card-skeleton" />)
             }
           </div>
         </div>

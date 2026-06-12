@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import AdminSidebar from '@/components/AdminSidebar'
 
@@ -66,7 +67,7 @@ export default function AdminClientsPage() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Email</th><th>Nom</th><th>Commandes</th><th>Inscrit le</th>
+                <th>Email</th><th>Nom</th><th>Commandes</th><th>Inscrit le</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -78,6 +79,7 @@ export default function AdminClientsPage() {
                     <span className="admin-stock-badge">{c._count.orders} commande{c._count.orders > 1 ? 's' : ''}</span>
                   </td>
                   <td className="admin-muted">{new Date(c.createdAt).toLocaleDateString('fr-FR')}</td>
+                  <td><Link href={`/admin/clients/${c.id}`} className="btn-sm">Voir la fiche →</Link></td>
                 </tr>
               ))}
             </tbody>

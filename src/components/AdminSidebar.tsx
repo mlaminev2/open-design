@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 
 const NAV = [
   { href: '/admin', label: 'Tableau de bord', exact: true },
+  { href: '/admin/homepage', label: "Page d'accueil", exact: false },
   { href: '/admin/produits', label: 'Produits', exact: false },
   { href: '/admin/commandes', label: 'Commandes', exact: false },
   { href: '/admin/clients', label: 'Clients', exact: false },
